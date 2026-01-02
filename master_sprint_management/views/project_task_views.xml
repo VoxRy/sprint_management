@@ -11,39 +11,50 @@
     <field name="priority">99</field>
     <field name="arch" type="xml">
 
-      <!-- helper field must exist in view -->
+      <!-- Helper field must exist in view -->
       <xpath expr="//sheet" position="before">
         <field name="use_sprint_management" invisible="1"/>
       </xpath>
 
-      <!-- 🔥 JIRA-LIKE SPRINT INFO (SAFE XPATH) -->
+      <!-- 🔥 JIRA-LIKE SPRINT INFO BANNER -->
       <xpath expr="//div[contains(@class,'oe_title')]" position="after">
-        <div class="text-muted mt-1"
+        <div class="alert alert-info o_form_sheet_bg mb-3"
+             role="alert"
              attrs="{'invisible':[('sprint_id','=',False)]}">
-
-          <strong>Sprint:</strong>
-          <field name="sprint_id" readonly="1"/>
-
-          <span attrs="{'invisible':[('previous_sprint_id','=',False)]}">
-            <span> · Moved from </span>
-            <field name="previous_sprint_id" readonly="1"/>
-          </span>
-
+          <div class="d-flex align-items-center">
+            <i class="fa fa-columns fa-2x mr-3 text-info"/>
+            <div class="flex-grow-1">
+              <strong class="d-block">Current Sprint:</strong>
+              <field name="sprint_id" 
+                     readonly="1" 
+                     class="oe_inline font-weight-bold"/>
+              
+              <span attrs="{'invisible':[('previous_sprint_id','=',False)]}"
+                    class="ml-3 text-muted">
+                <i class="fa fa-arrow-left"/> Moved from 
+                <field name="previous_sprint_id" readonly="1" class="oe_inline"/>
+              </span>
+            </div>
+          </div>
         </div>
       </xpath>
 
-      <!-- Sprint & Epic selection -->
+      <!-- Sprint & Epic Selection Fields -->
       <xpath expr="//field[@name='project_id']" position="after">
 
         <field name="sprint_id"
                attrs="{'invisible':[('use_sprint_management','=',False)]}"
                domain="[('project_id', '=', project_id), ('state', 'in', ['waiting','active'])]"
-               options="{'no_create': True}"/>
+               options="{'no_create': True, 'no_open': False}"
+               placeholder="Select sprint..."
+               help="Assign this task to a sprint"/>
 
         <field name="epic_id"
                attrs="{'invisible':[('use_sprint_management','=',False)]}"
                domain="[('project_id', '=', project_id)]"
-               options="{'no_create': True}"/>
+               options="{'no_create': True, 'no_open': False}"
+               placeholder="Select epic..."
+               help="Group related tasks under an epic"/>
 
       </xpath>
 
@@ -52,26 +63,70 @@
 
 
   <!-- =========================================================
-       BACKLOG TREE
+       BACKLOG TREE VIEW
        ========================================================= -->
   <record id="view_task_tree_backlog" model="ir.ui.view">
     <field name="name">project.task.tree.backlog</field>
     <field name="model">project.task</field>
     <field name="priority">20</field>
     <field name="arch" type="xml">
-      <tree editable="top" string="Backlog">
+      <tree editable="top" 
+            string="Backlog" 
+            create="true"
+            decoration-danger="priority == '1'"
+            decoration-warning="priority == '2'"
+            decoration-info="kanban_state == 'blocked'">
 
+        <!-- Hidden Fields -->
         <field name="company_id" invisible="1"/>
+        <field name="kanban_state" invisible="1"/>
+        <field name="use_sprint_management" invisible="1"/>
 
-        <field name="priority" widget="priority"/>
-        <field name="name"/>
-        <field name="project_id"/>
-        <field name="sprint_id" options="{'no_create': True}"/>
-        <field name="epic_id" options="{'no_create': True}"/>
-        <field name="stage_id"/>
-        <field name="user_ids" widget="many2many_tags"/>
-        <field name="tag_ids" widget="many2many_tags"/>
-        <field name="activity_ids" widget="list_activity"/>
+        <!-- Visible Fields -->
+        <field name="priority" 
+               widget="priority" 
+               nolabel="1"
+               optional="show"/>
+        
+        <field name="name" 
+               placeholder="Task name..."
+               required="1"/>
+        
+        <field name="project_id" 
+               options="{'no_create': True}"
+               optional="show"/>
+        
+        <field name="sprint_id" 
+               options="{'no_create': True}"
+               placeholder="Assign to sprint..."
+               optional="show"/>
+        
+        <field name="epic_id" 
+               options="{'no_create': True}"
+               placeholder="Add to epic..."
+               optional="show"/>
+        
+        <field name="stage_id" 
+               optional="show"/>
+        
+        <field name="user_ids" 
+               widget="many2many_tags" 
+               options="{'color_field': 'color', 'no_create': True}"
+               placeholder="Assign to..."
+               optional="show"/>
+        
+        <field name="tag_ids" 
+               widget="many2many_tags"
+               options="{'color_field': 'color'}"
+               placeholder="Add tags..."
+               optional="hide"/>
+        
+        <field name="date_deadline" 
+               optional="hide"/>
+        
+        <field name="activity_ids" 
+               widget="list_activity"
+               optional="show"/>
 
       </tree>
     </field>
@@ -79,7 +134,7 @@
 
 
   <!-- =========================================================
-       SPRINT BOARD KANBAN
+       SPRINT BOARD KANBAN VIEW
        ========================================================= -->
   <record id="view_task_kanban_sprint_board" model="ir.ui.view">
     <field name="name">project.task.kanban.sprint.board</field>
@@ -87,30 +142,64 @@
     <field name="priority">20</field>
     <field name="arch" type="xml">
       <kanban default_group_by="stage_id"
-              class="o_kanban_small_column"
+              class="o_kanban_small_column o_kanban_project_tasks"
               quick_create="false"
               group_create="false"
               group_delete="false"
               group_edit="false"
-              records_draggable="true">
+              records_draggable="true"
+              archivable="false">
 
+        <!-- Fields -->
         <field name="name"/>
         <field name="project_id"/>
         <field name="stage_id"/>
         <field name="epic_id"/>
+        <field name="sprint_id"/>
         <field name="user_ids"/>
         <field name="priority"/>
         <field name="activity_ids"/>
         <field name="activity_state"/>
         <field name="tag_ids"/>
         <field name="color"/>
+        <field name="kanban_state"/>
+        <field name="sequence"/>
+
+        <!-- Progressbar for Kanban State -->
+        <progressbar field="kanban_state" 
+                     colors='{"done": "success", "blocked": "danger", "normal": "muted"}'/>
 
         <templates>
           <t t-name="kanban-box">
             <div t-attf-class="{{!selection_mode ? 'oe_kanban_color_' + kanban_getcolor(record.color.raw_value) : ''}} oe_kanban_card oe_kanban_global_click">
+              
+              <!-- Kanban Dropdown Menu -->
               <div class="oe_kanban_content">
+                <div class="o_dropdown_kanban dropdown">
+                  <a class="dropdown-toggle o-no-caret btn" 
+                     role="button" 
+                     data-toggle="dropdown" 
+                     data-display="static" 
+                     href="#" 
+                     aria-label="Dropdown menu" 
+                     title="Dropdown menu">
+                    <span class="fa fa-ellipsis-v"/>
+                  </a>
+                  <div class="dropdown-menu" role="menu">
+                    <a role="menuitem" 
+                       type="edit" 
+                       class="dropdown-item">Edit</a>
+                    <a role="menuitem" 
+                       type="delete" 
+                       class="dropdown-item">Delete</a>
+                    <div role="separator" class="dropdown-divider"/>
+                    <ul class="oe_kanban_colorpicker" 
+                        data-field="color"/>
+                  </div>
+                </div>
 
-                <div class="o_kanban_record_top">
+                <!-- Card Header -->
+                <div class="o_kanban_record_top mb-2">
                   <div class="o_kanban_record_headings">
                     <strong class="o_kanban_record_title">
                       <field name="name"/>
@@ -121,24 +210,41 @@
                   </div>
                 </div>
 
+                <!-- Card Body -->
                 <div class="o_kanban_record_body">
-                  <div t-if="record.epic_id.value" class="mb-1">
-                    <span class="badge badge-secondary">
-                      <i class="fa fa-flag"/> <field name="epic_id"/>
+                  
+                  <!-- Epic Badge -->
+                  <div t-if="record.epic_id.value" class="mb-2">
+                    <span class="badge badge-pill badge-info">
+                      <i class="fa fa-flag-o"/> <field name="epic_id"/>
                     </span>
                   </div>
 
-                  <div t-if="record.tag_ids.value" class="mt-1">
-                    <field name="tag_ids" widget="many2many_tags"/>
+                  <!-- Kanban State Indicator -->
+                  <div t-if="record.kanban_state.raw_value == 'blocked'" class="mb-2">
+                    <span class="badge badge-pill badge-danger">
+                      <i class="fa fa-ban"/> Blocked
+                    </span>
                   </div>
+
+                  <!-- Tags -->
+                  <div t-if="record.tag_ids.value" class="mb-2">
+                    <field name="tag_ids" 
+                           widget="many2many_tags" 
+                           options="{'color_field': 'color'}"/>
+                  </div>
+
                 </div>
 
-                <div class="o_kanban_record_bottom">
+                <!-- Card Footer -->
+                <div class="o_kanban_record_bottom mt-2">
                   <div class="oe_kanban_bottom_left">
                     <field name="activity_ids" widget="kanban_activity"/>
                   </div>
                   <div class="oe_kanban_bottom_right">
-                    <field name="user_ids" widget="many2many_avatar_user"/>
+                    <field name="user_ids" 
+                           widget="many2many_avatar_user"
+                           options="{'no_quick_create': True}"/>
                   </div>
                 </div>
 
@@ -152,7 +258,7 @@
 
 
   <!-- =========================================================
-       SEARCH VIEW
+       SEARCH VIEW WITH FILTERS
        ========================================================= -->
   <record id="view_task_search_sprint" model="ir.ui.view">
     <field name="name">project.task.search.sprint</field>
@@ -160,38 +266,95 @@
     <field name="inherit_id" ref="project.view_task_search_form"/>
     <field name="arch" type="xml">
 
+      <!-- Search Panel -->
       <xpath expr="//search" position="inside">
         <searchpanel>
-          <field name="sprint_id" enable_counters="1"/>
-          <field name="epic_id" enable_counters="1"/>
-          <field name="stage_id" enable_counters="1"/>
+          <field name="project_id" 
+                 icon="fa-folder-open"
+                 enable_counters="1"
+                 select="multi"/>
+          <field name="sprint_id" 
+                 icon="fa-columns"
+                 enable_counters="1"
+                 select="multi"/>
+          <field name="epic_id" 
+                 icon="fa-flag"
+                 enable_counters="1"
+                 select="multi"/>
+          <field name="stage_id" 
+                 icon="fa-tasks"
+                 enable_counters="1"/>
+          <field name="user_ids" 
+                 icon="fa-user"
+                 enable_counters="1"
+                 select="multi"/>
         </searchpanel>
-        <field name="tag_ids"/>
       </xpath>
 
+      <!-- Additional Search Fields -->
       <xpath expr="//field[@name='name']" position="after">
-        <field name="sprint_id"/>
-        <field name="epic_id"/>
-        <field name="stage_id"/>
+        <field name="sprint_id" 
+               string="Sprint"
+               filter_domain="[('sprint_id', 'ilike', self)]"/>
+        <field name="epic_id" 
+               string="Epic"
+               filter_domain="[('epic_id', 'ilike', self)]"/>
+        <field name="stage_id" 
+               string="Stage"
+               filter_domain="[('stage_id', 'ilike', self)]"/>
+        <field name="tag_ids" 
+               string="Tags"
+               filter_domain="[('tag_ids', 'ilike', self)]"/>
       </xpath>
 
+      <!-- Sprint Filters -->
       <xpath expr="//filter[@name='my_tasks']" position="after">
         <separator/>
-        <filter string="Backlog"
+        <filter string="Backlog Tasks"
                 name="filter_backlog"
-                domain="[('sprint_id','=',False)]"/>
+                domain="[('sprint_id','=',False)]"
+                help="Tasks not assigned to any sprint"/>
+        <filter string="Active Sprint"
+                name="filter_active_sprint"
+                domain="[('sprint_id.state','=','active')]"
+                help="Tasks in active sprint"/>
+        <filter string="Has Epic"
+                name="filter_has_epic"
+                domain="[('epic_id','!=',False)]"
+                help="Tasks assigned to an epic"/>
+        <separator/>
+        <filter string="Blocked"
+                name="filter_blocked"
+                domain="[('kanban_state','=','blocked')]"
+                help="Tasks that are blocked"/>
+        <filter string="High Priority"
+                name="filter_high_priority"
+                domain="[('priority','in',['1','2'])]"
+                help="Urgent and high priority tasks"/>
       </xpath>
 
+      <!-- Group By Options -->
       <xpath expr="//filter[@name='project']" position="after">
         <filter string="Sprint"
                 name="group_sprint"
-                context="{'group_by':'sprint_id'}"/>
+                context="{'group_by':'sprint_id'}"
+                help="Group by sprint"/>
         <filter string="Epic"
                 name="group_epic"
-                context="{'group_by':'epic_id'}"/>
+                context="{'group_by':'epic_id'}"
+                help="Group by epic"/>
         <filter string="Stage"
                 name="group_stage"
-                context="{'group_by':'stage_id'}"/>
+                context="{'group_by':'stage_id'}"
+                help="Group by stage"/>
+        <filter string="Assigned To"
+                name="group_user"
+                context="{'group_by':'user_ids'}"
+                help="Group by assignee"/>
+        <filter string="Priority"
+                name="group_priority"
+                context="{'group_by':'priority'}"
+                help="Group by priority"/>
       </xpath>
 
     </field>
@@ -199,7 +362,7 @@
 
 
   <!-- =========================================================
-       BULK MOVE WIZARD
+       BULK MOVE TO SPRINT WIZARD ACTION
        ========================================================= -->
   <record id="action_sprint_move_wizard" model="ir.actions.act_window">
     <field name="name">Move to Sprint</field>
