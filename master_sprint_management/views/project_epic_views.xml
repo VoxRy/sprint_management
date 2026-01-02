@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+  <record id="view_project_epic_form" model="ir.ui.view">
+    <field name="name">project.epic.form</field>
+    <field name="model">project.epic</field>
+    <field name="arch" type="xml">
+      <form string="Epic">
+        <sheet>
+
+          <div class="oe_button_box" name="button_box">
+            <button class="oe_stat_button" type="object" name="action_view_epic_tasks" icon="fa-tasks">
+              <field name="task_count" widget="statinfo" string="Tasks"/>
+            </button>
+          </div>
+
+          <group>
+            <group>
+              <field name="name"/>
+              <field name="project_id" options="{'no_create': True}"/>
+              <field name="sequence"/>
+            </group>
+            <group>
+              <field name="color" widget="color_picker"/>
+            </group>
+          </group>
+
+          <group string="Description">
+            <field name="description" nolabel="1"/>
+          </group>
+
+          <notebook>
+            <page string="Tasks">
+              <field name="task_ids">
+                <tree>
+                  <field name="priority" widget="priority"/>
+                  <field name="name"/>
+                  <field name="sprint_id"/>
+                  <field name="user_ids" widget="many2many_tags"/>
+                  <field name="stage_id"/>
+                  <field name="tag_ids" widget="many2many_tags"/>
+                </tree>
+              </field>
+            </page>
+          </notebook>
+
+        </sheet>
+      </form>
+    </field>
+  </record>
+
+  <record id="view_project_epic_tree" model="ir.ui.view">
+    <field name="name">project.epic.tree</field>
+    <field name="model">project.epic</field>
+    <field name="arch" type="xml">
+      <tree default_order="sequence">
+        <field name="sequence" widget="handle"/>
+        <field name="name"/>
+        <field name="project_id"/>
+        <field name="task_count"/>
+        <field name="color" widget="color_picker"/>
+      </tree>
+    </field>
+  </record>
+
+  <record id="view_project_epic_kanban" model="ir.ui.view">
+    <field name="name">project.epic.kanban</field>
+    <field name="model">project.epic</field>
+    <field name="arch" type="xml">
+      <kanban>
+        <field name="name"/>
+        <field name="project_id"/>
+        <field name="task_count"/>
+        <field name="color"/>
+        <templates>
+          <t t-name="kanban-box">
+            <div class="oe_kanban_global_click">
+              <div class="o_kanban_record_top">
+                <strong class="o_kanban_record_title">
+                  <field name="name"/>
+                </strong>
+                <span class="badge badge-pill badge-primary">
+                  <field name="task_count"/> Tasks
+                </span>
+              </div>
+              <div class="o_kanban_record_body">
+                <field name="project_id"/>
+              </div>
+            </div>
+          </t>
+        </templates>
+      </kanban>
+    </field>
+  </record>
+
+</odoo>

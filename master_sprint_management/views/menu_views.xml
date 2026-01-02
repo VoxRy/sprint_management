@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+  <menuitem id="menu_project_sprint_root"
+            name="Sprint Management"
+            parent="project.menu_main_pm"
+            sequence="5"/>
+
+  <menuitem id="menu_project_sprint"
+            name="Sprints"
+            parent="menu_project_sprint_root"
+            action="action_project_sprint"
+            sequence="1"/>
+
+  <menuitem id="menu_project_epic"
+            name="Epics"
+            parent="menu_project_sprint_root"
+            action="action_project_epic"
+            sequence="2"/>
+
+  <menuitem id="menu_project_backlog"
+            name="Backlog"
+            parent="menu_project_sprint_root"
+            action="action_view_task_backlog"
+            sequence="3"/>
+
+</odoo>

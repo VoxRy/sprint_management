@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+  <!-- =========================================================
+       TASK FORM
+       ========================================================= -->
+  <record id="view_task_form_sprint" model="ir.ui.view">
+    <field name="name">project.task.form.sprint</field>
+    <field name="model">project.task</field>
+    <field name="inherit_id" ref="project.view_task_form2"/>
+    <field name="priority">99</field>
+    <field name="arch" type="xml">
+
+      <!-- helper field must exist in view -->
+      <xpath expr="//sheet" position="before">
+        <field name="use_sprint_management" invisible="1"/>
+      </xpath>
+
+      <!-- 🔥 JIRA-LIKE SPRINT INFO (SAFE XPATH) -->
+      <xpath expr="//div[contains(@class,'oe_title')]" position="after">
+        <div class="text-muted mt-1"
+             attrs="{'invisible':[('sprint_id','=',False)]}">
+
+          <strong>Sprint:</strong>
+          <field name="sprint_id" readonly="1"/>
+
+          <span attrs="{'invisible':[('previous_sprint_id','=',False)]}">
+            <span> · Moved from </span>
+            <field name="previous_sprint_id" readonly="1"/>
+          </span>
+
+        </div>
+      </xpath>
+
+      <!-- Sprint & Epic selection -->
+      <xpath expr="//field[@name='project_id']" position="after">
+
+        <field name="sprint_id"
+               attrs="{'invisible':[('use_sprint_management','=',False)]}"
+               domain="[('project_id', '=', project_id), ('state', 'in', ['waiting','active'])]"
+               options="{'no_create': True}"/>
+
+        <field name="epic_id"
+               attrs="{'invisible':[('use_sprint_management','=',False)]}"
+               domain="[('project_id', '=', project_id)]"
+               options="{'no_create': True}"/>
+
+      </xpath>
+
+    </field>
+  </record>
+
+
+  <!-- =========================================================
+       BACKLOG TREE
+       ========================================================= -->
+  <record id="view_task_tree_backlog" model="ir.ui.view">
+    <field name="name">project.task.tree.backlog</field>
+    <field name="model">project.task</field>
+    <field name="priority">20</field>
+    <field name="arch" type="xml">
+      <tree editable="top" string="Backlog">
+
+        <field name="company_id" invisible="1"/>
+
+        <field name="priority" widget="priority"/>
+        <field name="name"/>
+        <field name="project_id"/>
+        <field name="sprint_id" options="{'no_create': True}"/>
+        <field name="epic_id" options="{'no_create': True}"/>
+        <field name="stage_id"/>
+        <field name="user_ids" widget="many2many_tags"/>
+        <field name="tag_ids" widget="many2many_tags"/>
+        <field name="activity_ids" widget="list_activity"/>
+
+      </tree>
+    </field>
+  </record>
+
+
+  <!-- =========================================================
+       SPRINT BOARD KANBAN
+       ========================================================= -->
+  <record id="view_task_kanban_sprint_board" model="ir.ui.view">
+    <field name="name">project.task.kanban.sprint.board</field>
+    <field name="model">project.task</field>
+    <field name="priority">20</field>
+    <field name="arch" type="xml">
+      <kanban default_group_by="stage_id"
+              class="o_kanban_small_column"
+              quick_create="false"
+              group_create="false"
+              group_delete="false"
+              group_edit="false"
+              records_draggable="true">
+
+        <field name="name"/>
+        <field name="project_id"/>
+        <field name="stage_id"/>
+        <field name="epic_id"/>
+        <field name="user_ids"/>
+        <field name="priority"/>
+        <field name="activity_ids"/>
+        <field name="activity_state"/>
+        <field name="tag_ids"/>
+        <field name="color"/>
+
+        <templates>
+          <t t-name="kanban-box">
+            <div t-attf-class="{{!selection_mode ? 'oe_kanban_color_' + kanban_getcolor(record.color.raw_value) : ''}} oe_kanban_card oe_kanban_global_click">
+              <div class="oe_kanban_content">
+
+                <div class="o_kanban_record_top">
+                  <div class="o_kanban_record_headings">
+                    <strong class="o_kanban_record_title">
+                      <field name="name"/>
+                    </strong>
+                  </div>
+                  <div class="o_kanban_record_top_right">
+                    <field name="priority" widget="priority"/>
+                  </div>
+                </div>
+
+                <div class="o_kanban_record_body">
+                  <div t-if="record.epic_id.value" class="mb-1">
+                    <span class="badge badge-secondary">
+                      <i class="fa fa-flag"/> <field name="epic_id"/>
+                    </span>
+                  </div>
+
+                  <div t-if="record.tag_ids.value" class="mt-1">
+                    <field name="tag_ids" widget="many2many_tags"/>
+                  </div>
+                </div>
+
+                <div class="o_kanban_record_bottom">
+                  <div class="oe_kanban_bottom_left">
+                    <field name="activity_ids" widget="kanban_activity"/>
+                  </div>
+                  <div class="oe_kanban_bottom_right">
+                    <field name="user_ids" widget="many2many_avatar_user"/>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </t>
+        </templates>
+      </kanban>
+    </field>
+  </record>
+
+
+  <!-- =========================================================
+       SEARCH VIEW
+       ========================================================= -->
+  <record id="view_task_search_sprint" model="ir.ui.view">
+    <field name="name">project.task.search.sprint</field>
+    <field name="model">project.task</field>
+    <field name="inherit_id" ref="project.view_task_search_form"/>
+    <field name="arch" type="xml">
+
+      <xpath expr="//search" position="inside">
+        <searchpanel>
+          <field name="sprint_id" enable_counters="1"/>
+          <field name="epic_id" enable_counters="1"/>
+          <field name="stage_id" enable_counters="1"/>
+        </searchpanel>
+        <field name="tag_ids"/>
+      </xpath>
+
+      <xpath expr="//field[@name='name']" position="after">
+        <field name="sprint_id"/>
+        <field name="epic_id"/>
+        <field name="stage_id"/>
+      </xpath>
+
+      <xpath expr="//filter[@name='my_tasks']" position="after">
+        <separator/>
+        <filter string="Backlog"
+                name="filter_backlog"
+                domain="[('sprint_id','=',False)]"/>
+      </xpath>
+
+      <xpath expr="//filter[@name='project']" position="after">
+        <filter string="Sprint"
+                name="group_sprint"
+                context="{'group_by':'sprint_id'}"/>
+        <filter string="Epic"
+                name="group_epic"
+                context="{'group_by':'epic_id'}"/>
+        <filter string="Stage"
+                name="group_stage"
+                context="{'group_by':'stage_id'}"/>
+      </xpath>
+
+    </field>
+  </record>
+
+
+  <!-- =========================================================
+       BULK MOVE WIZARD
+       ========================================================= -->
+  <record id="action_sprint_move_wizard" model="ir.actions.act_window">
+    <field name="name">Move to Sprint</field>
+    <field name="res_model">sprint.move.wizard</field>
+    <field name="view_mode">form</field>
+    <field name="target">new</field>
+    <field name="binding_model_id" ref="project.model_project_task"/>
+    <field name="binding_view_types">list</field>
+  </record>
+
+</odoo>

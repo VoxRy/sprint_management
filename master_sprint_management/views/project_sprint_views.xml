@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+  <record id="view_project_sprint_tree" model="ir.ui.view">
+    <field name="name">project.sprint.tree</field>
+    <field name="model">project.sprint</field>
+    <field name="arch" type="xml">
+      <tree decoration-info="state == 'waiting'"
+            decoration-success="state == 'active'"
+            decoration-muted="state == 'closed'">
+        <field name="name"/>
+        <field name="project_id"/>
+        <field name="start_date"/>
+        <field name="end_date"/>
+        <field name="display_task_count" string="Tasks"/>
+        <field name="display_done_count" string="Done"/>
+        <field name="display_completion_percentage" widget="progressbar" string="Completion %"/>
+        <field name="state" widget="badge"/>
+      </tree>
+    </field>
+  </record>
+
+  <record id="view_project_sprint_form" model="ir.ui.view">
+    <field name="name">project.sprint.form</field>
+    <field name="model">project.sprint</field>
+    <field name="arch" type="xml">
+      <form string="Sprint">
+        <header>
+          <button name="action_start_sprint" string="Activate Sprint" type="object" states="waiting" class="oe_highlight"/>
+          <button name="action_close_sprint" string="Close Sprint" type="object" states="active" class="oe_highlight"/>
+          <field name="state" widget="statusbar" statusbar_visible="waiting,active,closed"/>
+        </header>
+
+        <sheet>
+          <div class="oe_button_box" name="button_box">
+            <button class="oe_stat_button" type="object" name="action_view_sprint_tasks" icon="fa-columns">
+              <field name="display_task_count" widget="statinfo" string="Board"/>
+            </button>
+            <button class="oe_stat_button" type="object" name="action_view_sprint_tasks" icon="fa-check-square">
+              <field name="display_done_count" widget="statinfo" string="Done"/>
+            </button>
+          </div>
+
+          <group>
+            <group>
+              <field name="name"/>
+              <field name="project_id" options="{'no_create': True}"/>
+            </group>
+            <group>
+              <field name="start_date"/>
+              <field name="end_date"/>
+              <field name="display_completion_percentage" widget="percentpie"/>
+            </group>
+          </group>
+
+          <group string="Sprint Goal">
+            <field name="goal" nolabel="1"/>
+          </group>
+
+          <notebook>
+            <page string="Sprint Tasks" name="sprint_tasks">
+              <field name="task_ids"
+                     domain="[('project_id','=',project_id)]"
+                     context="{'default_project_id': project_id, 'default_sprint_id': id}">
+                <tree>
+                  <field name="priority" widget="priority"/>
+                  <field name="name"/>
+                  <field name="epic_id"/>
+                  <field name="user_ids" widget="many2many_tags"/>
+                  <field name="stage_id"/>
+                  <field name="tag_ids" widget="many2many_tags"/>
+                </tree>
+              </field>
+            </page>
+
+            <page string="Snapshot" attrs="{'invisible':[('state','!=','closed')]}">
+              <group col="4">
+                <field name="snapshot_task_count" readonly="1"/>
+                <field name="snapshot_done_count" readonly="1"/>
+                <field name="snapshot_completion_percentage" readonly="1"/>
+              </group>
+            </page>
+          </notebook>
+
+        </sheet>
+
+        <div class="oe_chatter">
+          <field name="message_follower_ids" widget="mail_followers"/>
+          <field name="activity_ids" widget="mail_activity"/>
+          <field name="message_ids" widget="mail_thread"/>
+        </div>
+      </form>
+    </field>
+  </record>
+
+</odoo>

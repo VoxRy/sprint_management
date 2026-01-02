@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+  <!-- Sprints -->
+  <record id="action_project_sprint" model="ir.actions.act_window">
+    <field name="name">Sprints</field>
+    <field name="res_model">project.sprint</field>
+    <field name="view_mode">tree,kanban,form</field>
+  </record>
+
+  <!-- Epics -->
+  <record id="action_project_epic" model="ir.actions.act_window">
+    <field name="name">Epics</field>
+    <field name="res_model">project.epic</field>
+    <field name="view_mode">tree,kanban,form</field>
+  </record>
+
+  <!-- Backlog -->
+  <record id="action_view_task_backlog" model="ir.actions.act_window">
+    <field name="name">Backlog</field>
+    <field name="res_model">project.task</field>
+    <field name="view_mode">tree,form</field>
+    <field name="view_id" ref="view_task_tree_backlog"/>
+    <field name="domain">[('sprint_id','=',False), ('project_id.use_sprint_management','=',True)]</field>
+    <field name="context">{'search_default_filter_backlog': 1}</field>
+  </record>
+
+</odoo>

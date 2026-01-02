@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+  <record id="view_project_project_form_sprint" model="ir.ui.view">
+    <field name="name">project.project.form.sprint</field>
+    <field name="model">project.project</field>
+    <field name="inherit_id" ref="project.edit_project"/>
+    <field name="arch" type="xml">
+
+      <!-- Toggle -->
+      <xpath expr="//field[@name='active']" position="after">
+        <field name="use_sprint_management"/>
+      </xpath>
+
+      
+      <!-- 🔴 DEFAULT SMART BUTTON BOX HIDE -->
+      <xpath expr="//div[@name='button_box']" position="attributes">
+        <attribute name="attrs">{'invisible':[('use_sprint_management','=',True)]}</attribute>
+      </xpath>
+
+      <!-- 🟢 SPRINT BUTTONS -->
+      <xpath expr="//div[@name='button_box']" position="after">
+        <div class="oe_button_box"
+             name="sprint_button_box"
+             attrs="{'invisible':[('use_sprint_management','=',False)]}">
+
+          <!-- Backlog -->
+          <button class="oe_stat_button"
+                  type="object"
+                  name="action_view_backlog"
+                  icon="fa-list-ul">
+            <field name="backlog_task_count"
+                   widget="statinfo"
+                   string="Backlog"/>
+          </button>
+
+          <!-- Sprint Board (ACTIVE sprint only) -->
+          <button class="oe_stat_button"
+                  type="object"
+                  name="action_open_active_sprint_board"
+                  icon="fa-columns">
+            <field name="active_sprint_id"
+                   widget="statinfo"
+                   string="Sprint Board"/>
+          </button>
+
+          <!-- Epics -->
+          <button class="oe_stat_button"
+                  type="object"
+                  name="action_view_epics"
+                  icon="fa-flag">
+            <field name="epic_count"
+                   widget="statinfo"
+                   string="Epics"/>
+          </button>
+
+        </div>
+      </xpath>
+
+      <!-- NOTEBOOK -->
+      <xpath expr="//notebook" position="inside">
+
+        <page string="Epics"
+              attrs="{'invisible':[('use_sprint_management','=',False)]}">
+          <field name="epic_ids">
+            <tree editable="bottom">
+              <field name="sequence" widget="handle"/>
+              <field name="name"/>
+              <field name="task_count"/>
+              <field name="color" widget="color_picker"/>
+            </tree>
+          </field>
+        </page>
+
+        <page string="Sprints"
+              attrs="{'invisible':[('use_sprint_management','=',False)]}">
+          <field name="sprint_ids">
+            <tree decoration-success="state == 'active'"
+                  decoration-muted="state == 'closed'">
+              <field name="name"/>
+              <field name="start_date"/>
+              <field name="end_date"/>
+              <field name="display_task_count"/>
+              <field name="display_done_count"/>
+              <field name="display_completion_percentage"
+                     widget="progressbar"/>
+              <field name="state" widget="badge"/>
+              <button name="action_view_sprint_tasks"
+                      type="object"
+                      icon="fa-columns"
+                      string="Board"
+                      class="oe_link"/>
+            </tree>
+          </field>
+        </page>
+
+      </xpath>
+
+    </field>
+  </record>
+
+</odoo>
