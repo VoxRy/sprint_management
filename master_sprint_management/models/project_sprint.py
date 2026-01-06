@@ -144,7 +144,6 @@ class ProjectSprint(models.Model):
                 sprint.display_completion_percentage = sprint.snapshot_completion_percentage
                 continue
 
-            # ✅ LIVE CALC (ACTIVE / WAITING)
             done_tasks = sprint.task_ids.filtered(
                 lambda t: t.stage_id and (t.stage_id.is_closed or t.stage_id.fold)
             )
@@ -200,7 +199,6 @@ class ProjectSprint(models.Model):
                 % active_sprint.name
             )
 
-        # 🔥 AUTO CREATE STAGES (ONLY IF PROJECT USES SPRINT MGMT)
         if self.project_id.use_sprint_management:
             self.project_id._ensure_sprint_stages()
 
@@ -262,7 +260,7 @@ class ProjectSprint(models.Model):
 
     def action_view_sprint_tasks(self):
         """
-        🔥 JIRA-LIKE SPRINT BOARD
+        JIRA-like sprint board.
         - Domain = ONLY project
         - Sprint filter = removable search_default
         """
@@ -283,6 +281,9 @@ class ProjectSprint(models.Model):
                 (False, "tree"),
                 (False, "form"),
             ],
+            "search_view_id": self.env.ref(
+                "master_sprint_management.view_task_search_sprint"
+            ).id,
             "domain": [
                 ("project_id", "=", self.project_id.id),
             ],

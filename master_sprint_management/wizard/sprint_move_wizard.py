@@ -56,8 +56,12 @@ class SprintMoveWizard(models.TransientModel):
             "tag": "display_notification",
             "params": {
                 "title": _("Success"),
-                "message": _('%d task(s) moved to sprint "%s"') % (len(self.task_ids), self.sprint_id.name),
+                "message": _('%d task(s) moved to sprint "%s"') % (
+                    len(self.task_ids),
+                    self.sprint_id.name,
+                ),
                 "type": "success",
                 "sticky": False,
+                "next": {"type": "ir.actions.act_window_close"},
             },
         }

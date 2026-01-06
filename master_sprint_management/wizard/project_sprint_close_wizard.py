@@ -13,28 +13,22 @@ class ProjectSprintCloseWizard(models.TransientModel):
     sprint_id = fields.Many2one(
         "project.sprint",
         string="Sprint",
-        required=True
+        required=True,
     )
-
     project_id = fields.Many2one(
         "project.project",
         related="sprint_id.project_id",
         store=True,
-        readonly=True
+        readonly=True,
     )
-
     next_sprint_id = fields.Many2one(
         "project.sprint",
-        string="Move Tasks To"
+        string="Move Tasks To",
     )
-
     incomplete_task_count = fields.Integer(
-        string="Incomplete Tasks"
+        string="Incomplete Tasks",
     )
 
-    # --------------------------------------------------
-    # ACTION TYPE (ONLY 2 OPTIONS – JIRA LIKE)
-    # --------------------------------------------------
     action_type = fields.Selection(
         [
             ("move", "Move to Next Sprint"),
@@ -51,50 +45,34 @@ class ProjectSprintCloseWizard(models.TransientModel):
         compute="_compute_incomplete_tasks",
     )
 
-    # --------------------------------------------------
-    # COMPUTES
-    # --------------------------------------------------
     @api.depends("sprint_id")
     def _compute_incomplete_tasks(self):
-        for wiz in self:
-            if wiz.sprint_id:
-                wiz.incomplete_task_ids = wiz.sprint_id.task_ids.filtered(
-                    lambda t: not (
-                        t.stage_id and (t.stage_id.is_closed or t.stage_id.fold)
-                    )
+        for wizard in self:
+            if wizard.sprint_id:
+                wizard.incomplete_task_ids = wizard.sprint_id.task_ids.filtered(
+                    lambda t: not (t.stage_id and (t.stage_id.is_closed or t.stage_id.fold))
                 )
             else:
-                wiz.incomplete_task_ids = False
+                wizard.incomplete_task_ids = False
 
-    # --------------------------------------------------
-    # ONCHANGE
-    # --------------------------------------------------
     @api.onchange("action_type")
     def _onchange_action_type(self):
         if self.action_type != "move":
             self.next_sprint_id = False
 
-    # --------------------------------------------------
-    # ACTIONS
-    # --------------------------------------------------
     def action_close_sprint(self):
         self.ensure_one()
 
         sprint = self.sprint_id
 
-        # ✅ SNAPSHOT BEFORE MOVING TASKS
+        # Snapshot before moving tasks
         snapshot_vals = sprint._compute_snapshot_values()
         sprint.write(snapshot_vals)
 
         incomplete_tasks = sprint.task_ids.filtered(
-            lambda t: not (
-                t.stage_id and (t.stage_id.is_closed or t.stage_id.fold)
-            )
+            lambda t: not (t.stage_id and (t.stage_id.is_closed or t.stage_id.fold))
         )
 
-        # ----------------------------------------------
-        # MOVE TO NEXT SPRINT
-        # ----------------------------------------------
         if incomplete_tasks and self.action_type == "move":
             if not self.next_sprint_id:
                 raise UserError(_("Please select a target sprint!"))
@@ -110,19 +88,18 @@ class ProjectSprintCloseWizard(models.TransientModel):
                     % (sprint.name, self.next_sprint_id.name)
                 )
 
-            incomplete_tasks.write( {
-                "previous_sprint_id": sprint.id,
-               "sprint_id": self.next_sprint_id.id
-            })
+            incomplete_tasks.write(
+                {
+                    "previous_sprint_id": sprint.id,
+                    "sprint_id": self.next_sprint_id.id,
+                }
+            )
 
             message = _('%d incomplete task(s) moved to sprint "%s"') % (
                 len(incomplete_tasks),
                 self.next_sprint_id.name,
             )
 
-        # ----------------------------------------------
-        # MOVE TO BACKLOG
-        # ----------------------------------------------
         elif incomplete_tasks and self.action_type == "backlog":
             for task in incomplete_tasks:
                 task.message_post(
@@ -137,15 +114,9 @@ class ProjectSprintCloseWizard(models.TransientModel):
             incomplete_tasks.write({"sprint_id": False})
             message = _("%d incomplete task(s) moved to backlog") % len(incomplete_tasks)
 
-        # ----------------------------------------------
-        # NO INCOMPLETE TASKS
-        # ----------------------------------------------
         else:
             message = _("Sprint closed successfully. All tasks were completed!")
 
-        # ----------------------------------------------
-        # CLOSE SPRINT
-        # ----------------------------------------------
         sprint.write({"state": "closed"})
 
         sprint.message_post(
@@ -166,6 +137,7 @@ class ProjectSprintCloseWizard(models.TransientModel):
             )
         )
 
+        # ✅ Close the popup after showing notification
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
@@ -174,5 +146,6 @@ class ProjectSprintCloseWizard(models.TransientModel):
                 "message": message,
                 "type": "success",
                 "sticky": False,
+                "next": {"type": "ir.actions.act_window_close"},
             },
         }
