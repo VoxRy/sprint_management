@@ -23,6 +23,25 @@ class ProjectEpic(models.Model):
     task_ids = fields.One2many("project.task", "epic_id", string="Tasks")
     task_count = fields.Integer(string="Tasks", compute="_compute_task_count", store=True)
 
+    display_completion_percentage = fields.Float(
+        string="Completion %",
+        compute="_compute_display_completion",
+    )
+
+    @api.depends("task_ids", "task_ids.stage_id", "task_ids.stage_id.fold")
+    def _compute_display_completion(self):
+        for epic in self:
+            if not epic.task_count:
+                epic.display_completion_percentage = 0.0
+                continue
+            
+            done_tasks = epic.task_ids.filtered(
+                lambda t: t.stage_id and (t.stage_id.is_closed or t.stage_id.fold)
+            )
+            epic.display_completion_percentage = round(
+                (len(done_tasks) / epic.task_count) * 100, 2
+            )
+
     @api.depends("task_ids")
     def _compute_task_count(self):
         for epic in self:

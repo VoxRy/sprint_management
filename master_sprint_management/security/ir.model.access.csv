@@ -3,5 +3,7 @@ access_project_sprint_user,access.project.sprint.user,model_project_sprint,proje
 access_project_sprint_manager,access.project.sprint.manager,model_project_sprint,project.group_project_manager,1,1,1,1
 access_project_epic_user,access.project.epic.user,model_project_epic,project.group_project_user,1,1,1,0
 access_project_epic_manager,access.project.epic.manager,model_project_epic,project.group_project_manager,1,1,1,1
+access_project_sprint_start_wizard_user,access.project.sprint.start.wizard.user,model_project_sprint_start_wizard,project.group_project_user,1,1,1,0
 access_project_sprint_close_wizard_user,access.project.sprint.close.wizard.user,model_project_sprint_close_wizard,project.group_project_user,1,1,1,0
-access_sprint_move_wizard_user,access.sprint.move.wizard.user,model_sprint_move_wizard,project.group_project_user,1,1,1,0
+access_project_task_move_sprint_user,access.project.task.move.sprint.user,model_project_task_move_sprint,project.group_project_user,1,1,1,0
+access_project_sprint_create_wizard_user,access.project.sprint.create.wizard.user,model_project_sprint_create_wizard,project.group_project_user,1,1,1,1

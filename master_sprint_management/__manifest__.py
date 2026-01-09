@@ -26,13 +26,15 @@ Master Sprint Management (Odoo 15 Community)
     "views/project_sprint_views.xml",
     "views/project_epic_views.xml",
     "views/project_task_type_views.xml",
-    "views/project_task_views.xml",          # 👈 view_task_tree_backlog BURADA
+    "views/project_task_views.xml",          
 
     # =====================
     # WIZARDS
     # =====================
-    "views/project_sprint_close_wizard_views.xml",
-    "views/sprint_move_wizard_views.xml",
+    "wizard/project_sprint_start_wizard_views.xml",
+    "wizard/project_sprint_close_wizard_views.xml",
+    "wizard/project_sprint_create_wizard_views.xml",
+    "wizard/sprint_move_wizard_views.xml",
 
     # =====================
     # ACTIONS & MENUS (EN SON)
@@ -43,5 +45,5 @@ Master Sprint Management (Odoo 15 Community)
     "installable": True,
     "application": True,
     "auto_install": False,
-    "license": "LGPL-3",
+    "license": "OPL-1",
 }

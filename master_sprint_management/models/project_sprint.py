@@ -27,13 +27,13 @@ class ProjectSprint(models.Model):
         tracking=True,
     )
 
-    start_date = fields.Date(
+    start_date = fields.Datetime(
         string="Start Date",
         required=True,
         tracking=True,
     )
 
-    end_date = fields.Date(
+    end_date = fields.Datetime(
         string="End Date",
         required=True,
         tracking=True,
@@ -63,6 +63,12 @@ class ProjectSprint(models.Model):
         "project.task",
         "sprint_id",
         string="Tasks",
+    )
+    
+    add_tasks_from_backlog = fields.Many2many(
+        "project.task",
+        string="Add from Backlog",
+        domain="[('project_id', '=', project_id), ('sprint_id', '=', False)]",
     )
 
     task_count = fields.Integer(
@@ -111,15 +117,6 @@ class ProjectSprint(models.Model):
     )
 
     # --------------------------------------------------
-    # CONSTRAINTS
-    # --------------------------------------------------
-    @api.constrains("start_date", "end_date")
-    def _check_dates(self):
-        for sprint in self:
-            if sprint.start_date and sprint.end_date and sprint.start_date > sprint.end_date:
-                raise ValidationError(_("End date must be after start date!"))
-
-    # --------------------------------------------------
     # COMPUTES
     # --------------------------------------------------
     @api.depends("task_ids")
@@ -158,28 +155,30 @@ class ProjectSprint(models.Model):
             else:
                 sprint.display_completion_percentage = 0.0
 
+    @api.onchange("add_tasks_from_backlog")
+    def _onchange_add_tasks_from_backlog(self):
+        if self.add_tasks_from_backlog:
+            # When backlog tasks are selected, add them to task_ids
+            # This is a many2many field used as a bridge
+            new_tasks = self.add_tasks_from_backlog
+            self.task_ids |= new_tasks
+            # Reset selection after adding
+            self.add_tasks_from_backlog = [(5, 0, 0)]
+
     # --------------------------------------------------
-    # INTERNAL
+    # CONSTRAINTS
     # --------------------------------------------------
-    def _compute_snapshot_values(self):
-        self.ensure_one()
-        total = len(self.task_ids)
-        done = len(
-            self.task_ids.filtered(
-                lambda t: t.stage_id and (t.stage_id.is_closed or t.stage_id.fold)
-            )
-        )
-        completion = round((done / total) * 100, 2) if total else 0.0
-        return {
-            "snapshot_task_count": total,
-            "snapshot_done_count": done,
-            "snapshot_completion_percentage": completion,
-        }
+    @api.constrains("start_date", "end_date")
+    def _check_dates(self):
+        for sprint in self:
+            if sprint.start_date and sprint.end_date and sprint.start_date > sprint.end_date:
+                raise ValidationError(_("End date must be after start date!"))
 
     # --------------------------------------------------
     # ACTIONS
     # --------------------------------------------------
     def action_start_sprint(self):
+        """Open wizard to configure and start this sprint (Jira-style)"""
         self.ensure_one()
 
         active_sprint = self.search(
@@ -199,14 +198,21 @@ class ProjectSprint(models.Model):
                 % active_sprint.name
             )
 
-        if self.project_id.use_sprint_management:
-            self.project_id._ensure_sprint_stages()
-
-        self.write({"state": "active"})
-        self.message_post(
-            body=_("<p>Sprint <strong>%s</strong> has been activated.</p>") % self.name
-        )
-        return True
+        return {
+            "name": _("Start Sprint"),
+            "type": "ir.actions.act_window",
+            "res_model": "project.sprint.start.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "default_project_id": self.project_id.id,
+                "default_sprint_id": self.id,
+                "default_name": self.name,
+                "default_start_date": self.start_date or fields.Datetime.now(),
+                "default_end_date": self.end_date,
+                "default_goal": self.goal,
+            },
+        }
 
     def action_close_sprint(self):
         self.ensure_one()
@@ -215,46 +221,27 @@ class ProjectSprint(models.Model):
             lambda t: not (t.stage_id and (t.stage_id.is_closed or t.stage_id.fold))
         )
 
-        if incomplete_tasks:
-            next_sprint = self.search(
-                [
-                    ("project_id", "=", self.project_id.id),
-                    ("state", "in", ["waiting", "active"]),
-                    ("id", "!=", self.id),
-                    ("start_date", ">=", self.end_date),
-                ],
-                order="start_date",
-                limit=1,
-            )
-
-            return {
-                "name": _("Close Sprint"),
-                "type": "ir.actions.act_window",
-                "res_model": "project.sprint.close.wizard",
-                "view_mode": "form",
-                "target": "new",
-                "context": {
-                    "default_sprint_id": self.id,
-                    "default_next_sprint_id": next_sprint.id if next_sprint else False,
-                    "default_incomplete_task_count": len(incomplete_tasks),
-                    "default_action_type": "move",
-                },
-            }
-
-        self.write(self._compute_snapshot_values())
-        self.write({"state": "closed"})
-        self.message_post(
-            body=_("<p>Sprint closed successfully. All tasks were completed!</p>")
+        # Always open wizard (Jira-like: just ask for date)
+        next_sprint = self.search(
+            [
+                ("project_id", "=", self.project_id.id),
+                ("state", "in", ["waiting", "active"]),
+                ("id", "!=", self.id),
+                ("start_date", ">=", self.end_date),
+            ],
+            order="start_date",
+            limit=1,
         )
 
         return {
-            "type": "ir.actions.client",
-            "tag": "display_notification",
-            "params": {
-                "title": _("Sprint Closed"),
-                "message": _("Sprint closed successfully!"),
-                "type": "success",
-                "sticky": False,
+            "name": _("Close Sprint"),
+            "type": "ir.actions.act_window",
+            "res_model": "project.sprint.close.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "default_sprint_id": self.id,
+                "default_close_date": fields.Date.today(),
             },
         }
 
@@ -266,7 +253,7 @@ class ProjectSprint(models.Model):
         """
         self.ensure_one()
 
-        return {
+        action = {
             "name": _("Sprint Board - %s") % self.project_id.name,
             "type": "ir.actions.act_window",
             "res_model": "project.task",
@@ -274,7 +261,7 @@ class ProjectSprint(models.Model):
             "views": [
                 (
                     self.env.ref(
-                        "master_sprint_management.view_task_kanban_sprint_board"
+                        "master_sprint_management.view_task_kanban"
                     ).id,
                     "kanban",
                 ),
@@ -282,7 +269,7 @@ class ProjectSprint(models.Model):
                 (False, "form"),
             ],
             "search_view_id": self.env.ref(
-                "master_sprint_management.view_task_search_sprint"
+                "master_sprint_management.view_task_search_form"
             ).id,
             "domain": [
                 ("project_id", "=", self.project_id.id),
@@ -291,5 +278,34 @@ class ProjectSprint(models.Model):
                 "default_project_id": self.project_id.id,
                 "search_default_sprint_id": self.id,
                 "group_by": "stage_id",
+                "active_sprint_id": self.id,
+                "active_sprint_state": self.state,
+                "sprint_board_project_id": self.project_id.id,
             },
+        }
+
+        # Add buttons based on sprint state
+        if self.state == "active":
+            action["context"]["show_close_button"] = True
+        else:
+            action["context"]["show_start_button"] = True
+
+        return action
+
+    # --------------------------------------------------
+    # BUSINESS METHODS
+    # --------------------------------------------------
+    def _compute_snapshot_values(self):
+        self.ensure_one()
+        total = len(self.task_ids)
+        done = len(
+            self.task_ids.filtered(
+                lambda t: t.stage_id and (t.stage_id.is_closed or t.stage_id.fold)
+            )
+        )
+        completion = round((done / total) * 100, 2) if total else 0.0
+        return {
+            "snapshot_task_count": total,
+            "snapshot_done_count": done,
+            "snapshot_completion_percentage": completion,
         }

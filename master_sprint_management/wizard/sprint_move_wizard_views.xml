@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-  <record id="view_sprint_move_wizard_form" model="ir.ui.view">
-    <field name="name">sprint.move.wizard.form</field>
-    <field name="model">sprint.move.wizard</field>
+  <record id="project_task_move_sprint_view_form" model="ir.ui.view">
+    <field name="name">project.task.move.sprint.form</field>
+    <field name="model">project.task.move.sprint</field>
     <field name="arch" type="xml">
       <form string="Move Tasks to Sprint">
         <group>

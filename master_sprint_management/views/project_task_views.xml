@@ -4,8 +4,8 @@
   <!-- =========================================================
        TASK FORM (inherit core)
        ========================================================= -->
-  <record id="view_task_form_sprint" model="ir.ui.view">
-    <field name="name">project.task.form.sprint</field>
+  <record id="view_task_form2" model="ir.ui.view">
+    <field name="name">project.task.form.inherit.sprint</field>
     <field name="model">project.task</field>
     <field name="inherit_id" ref="project.view_task_form2"/>
     <field name="priority">99</field>
@@ -16,11 +16,11 @@
         <field name="use_sprint_management" invisible="1"/>
       </xpath>
 
-      <!-- JIRA-LIKE SPRINT INFO BANNER -->
+      <!-- JIRA-LIKE SPRINT INFO BANNER (only for sprint management projects) -->
       <xpath expr="//div[contains(@class,'oe_title')]" position="after">
         <div class="alert alert-info o_form_sheet_bg mb-3"
              role="alert"
-             attrs="{'invisible':[('sprint_id','=',False)]}">
+             attrs="{'invisible':[('use_sprint_management','=',False),('sprint_id','=',False)]}">
           <div class="d-flex align-items-center">
             <i class="fa fa-columns fa-2x mr-3 text-info"/>
             <div class="flex-grow-1">
@@ -35,6 +35,11 @@
                 <field name="previous_sprint_id" readonly="1" class="oe_inline"/>
               </span>
             </div>
+            <button name="action_view_planning_from_board"
+                    type="object"
+                    string="Go to Planning"
+                    class="btn btn-sm btn-primary ml-3"
+                    attrs="{'invisible':[('sprint_id','=',False)]}"/>
           </div>
         </div>
       </xpath>
@@ -67,8 +72,8 @@
   <!-- =========================================================
        BACKLOG TREE VIEW
        ========================================================= -->
-  <record id="view_task_tree_backlog" model="ir.ui.view">
-    <field name="name">project.task.tree.backlog</field>
+  <record id="project_task_view_tree_backlog" model="ir.ui.view">
+    <field name="name">project.task.view.tree.backlog</field>
     <field name="model">project.task</field>
     <field name="priority">20</field>
     <field name="arch" type="xml">
@@ -113,8 +118,8 @@
   <!-- =========================================================
        SPRINT BOARD KANBAN (CORE KANBAN INHERIT - looks like Odoo)
        ========================================================= -->
-  <record id="view_task_kanban_sprint_board" model="ir.ui.view">
-    <field name="name">project.task.kanban.sprint.board</field>
+  <record id="view_task_kanban" model="ir.ui.view">
+    <field name="name">project.task.kanban.inherit.sprint.board</field>
     <field name="model">project.task</field>
 
     <!-- ✅ inherit core kanban instead of rewriting -->
@@ -127,11 +132,48 @@
       <xpath expr="//kanban" position="inside">
         <field name="sprint_id"/>
         <field name="epic_id"/>
+        <field name="use_sprint_management"/>
+        <field name="sprint_goal"/>
+        <field name="sprint_start_date"/>
+        <field name="sprint_end_date"/>
       </xpath>
 
-      <!-- ✅ Put badge into core card body -->
+      <!-- JIRA-LIKE KANBAN BANNER -->
+      <xpath expr="//templates" position="before">
+        <div class="alert alert-info py-2 px-3 mb-2 d-flex align-items-center justify-content-between"
+             attrs="{'invisible': [('sprint_id', '=', False)]}"
+             style="border-radius: 4px; border-left: 5px solid #117a8b;">
+          <div>
+            <div class="d-flex align-items-center">
+              <i class="fa fa-columns mr-2 text-info" style="font-size: 1.2em;"/>
+              <strong style="font-size: 1.1em;"><field name="sprint_id"/></strong>
+              <span class="mx-2 text-muted">|</span>
+              <span class="text-muted">
+                <field name="sprint_start_date"/> - <field name="sprint_end_date"/>
+              </span>
+            </div>
+            <div t-if="record.sprint_goal.value" class="mt-1 text-muted small italic">
+              <i class="fa fa-quote-left mr-1" style="opacity: 0.5;"/>
+              <field name="sprint_goal"/>
+            </div>
+          </div>
+          <div class="text-right d-flex align-items-center">
+            <button name="action_view_planning_from_board"
+                    type="object"
+                    class="btn btn-secondary btn-sm mr-2"
+                    title="View Planning / Backlog">
+              Planning
+            </button>
+            <span class="badge badge-pill badge-info">
+              Sprint Board
+            </span>
+          </div>
+        </div>
+      </xpath>
+
+      <!-- ✅ Put badge into core card body (only for sprint management projects) -->
       <xpath expr="//div[contains(@class,'o_kanban_record_body')]" position="inside">
-        <div class="mt-1 mb-2">
+        <div class="mt-1 mb-2" t-if="record.use_sprint_management.raw_value">
           <t t-if="record.sprint_id.value">
             <span class="badge badge-pill badge-secondary">
               <i class="fa fa-columns"/> <field name="sprint_id"/>
@@ -144,7 +186,7 @@
           </t>
         </div>
 
-        <div t-if="record.epic_id.value" class="mb-2">
+        <div t-if="record.epic_id.value and record.use_sprint_management.raw_value" class="mb-2">
           <span class="badge badge-pill badge-info">
             <i class="fa fa-flag-o"/> <field name="epic_id"/>
           </span>
@@ -154,21 +196,66 @@
     </field>
   </record>
 
+  <!-- Sprint Board Action Buttons -->
+  <record id="action_start_sprint_from_board" model="ir.actions.server">
+    <field name="name">Start Sprint</field>
+    <field name="model_id" ref="project.model_project_task"/>
+    <field name="binding_model_id" ref="project.model_project_task"/>
+    <field name="binding_view_types">kanban</field>
+    <field name="state">code</field>
+    <field name="code">
+if records:
+    project_id = env.context.get('sprint_board_project_id')
+    if project_id:
+        project = env['project.project'].browse(project_id)
+        action = project.action_start_sprint_wizard()
+    else:
+        action = {'type': 'ir.actions.act_window_close'}
+else:
+    action = {'type': 'ir.actions.act_window_close'}
+    </field>
+  </record>
+
+  <record id="action_close_sprint_from_board" model="ir.actions.server">
+    <field name="name">Close Sprint</field>
+    <field name="model_id" ref="project.model_project_task"/>
+    <field name="binding_model_id" ref="project.model_project_task"/>
+    <field name="binding_view_types">kanban</field>
+    <field name="state">code</field>
+    <field name="code">
+if records:
+    active_sprint_id = env.context.get('active_sprint_id')
+    if active_sprint_id:
+        sprint = env['project.sprint'].browse(active_sprint_id)
+        action = sprint.action_close_sprint()
+    else:
+        action = {'type': 'ir.actions.act_window_close'}
+else:
+    action = {'type': 'ir.actions.act_window_close'}
+    </field>
+  </record>
+
 
   <!-- =========================================================
        SEARCH VIEW WITH FILTERS (inherit core search)
        ========================================================= -->
-  <record id="view_task_search_sprint" model="ir.ui.view">
-    <field name="name">project.task.search.sprint</field>
+  <record id="view_task_search_form" model="ir.ui.view">
+    <field name="name">project.task.search.inherit.sprint</field>
     <field name="model">project.task</field>
     <field name="inherit_id" ref="project.view_task_search_form"/>
     <field name="arch" type="xml">
 
-      <!-- Search Panel -->
+      <!-- Search Panel (only for sprint management actions) -->
       <xpath expr="//search" position="inside">
         <searchpanel>
-          <field name="sprint_id" icon="fa-columns" enable_counters="1" select="multi"/>
-          <field name="epic_id" icon="fa-flag" enable_counters="1" select="multi"/>
+          <field name="sprint_id" 
+                 icon="fa-columns" 
+                 enable_counters="1" 
+                 select="multi"/>
+          <field name="epic_id" 
+                 icon="fa-flag" 
+                 enable_counters="1" 
+                 select="multi"/>
           <field name="stage_id" icon="fa-tasks" enable_counters="1"/>
           <field name="user_ids" icon="fa-user" enable_counters="1" select="multi"/>
         </searchpanel>
@@ -176,18 +263,28 @@
 
       <!-- Extra search fields -->
       <xpath expr="//field[@name='name']" position="after">
-        <field name="sprint_id" string="Sprint" filter_domain="[('sprint_id', 'ilike', self)]"/>
-        <field name="epic_id" string="Epic" filter_domain="[('epic_id', 'ilike', self)]"/>
+        <field name="sprint_id" 
+               string="Sprint" 
+               filter_domain="[('sprint_id', 'ilike', self)]"/>
+        <field name="epic_id" 
+               string="Epic" 
+               filter_domain="[('epic_id', 'ilike', self)]"/>
         <field name="stage_id" string="Stage" filter_domain="[('stage_id', 'ilike', self)]"/>
         <field name="tag_ids" string="Tags" filter_domain="[('tag_ids', 'ilike', self)]"/>
       </xpath>
 
-      <!-- Filters -->
+      <!-- Filters (domains ensure they only work for sprint management projects) -->
       <xpath expr="//filter[@name='my_tasks']" position="after">
         <separator/>
-        <filter string="Backlog Tasks" name="filter_backlog" domain="[('sprint_id','=',False)]"/>
-        <filter string="Active Sprint" name="filter_active_sprint" domain="[('sprint_id.state','=','active')]"/>
-        <filter string="Has Epic" name="filter_has_epic" domain="[('epic_id','!=',False)]"/>
+        <filter string="Backlog Tasks" 
+                name="filter_backlog" 
+                domain="[('sprint_id','=',False), ('project_id.use_sprint_management','=',True)]"/>
+        <filter string="Active Sprint" 
+                name="filter_active_sprint" 
+                domain="[('sprint_id.state','=','active'), ('project_id.use_sprint_management','=',True)]"/>
+        <filter string="Has Epic" 
+                name="filter_has_epic" 
+                domain="[('epic_id','!=',False), ('project_id.use_sprint_management','=',True)]"/>
         <separator/>
         <filter string="Blocked" name="filter_blocked" domain="[('kanban_state','=','blocked')]"/>
         <filter string="High Priority" name="filter_high_priority" domain="[('priority','in',['1','2'])]"/>
@@ -195,9 +292,13 @@
 
       <!-- Group By -->
       <xpath expr="//filter[@name='project']" position="after">
-        <filter string="Sprint" name="group_sprint" context="{'group_by':'sprint_id'}"/>
-        <filter string="Epic" name="group_epic" context="{'group_by':'epic_id'}"/>
-        <filter string="Stage" name="group_stage" context="{'group_by':'stage_id'}"/>
+        <filter string="Sprint" 
+                name="group_sprint" 
+                context="{'group_by':'sprint_id'}"/>
+        <filter string="Epic" 
+                name="group_epic" 
+                context="{'group_by':'epic_id'}"/>
+        <filter string="Status" name="group_stage" context="{'group_by':'stage_id'}"/>
         <filter string="Assigned To" name="group_user" context="{'group_by':'user_ids'}"/>
         <filter string="Priority" name="group_priority" context="{'group_by':'priority'}"/>
       </xpath>
@@ -209,9 +310,9 @@
   <!-- =========================================================
        BULK MOVE TO SPRINT WIZARD ACTION
        ========================================================= -->
-  <record id="action_sprint_move_wizard" model="ir.actions.act_window">
+  <record id="project_task_action_move_sprint" model="ir.actions.act_window">
     <field name="name">Move to Sprint</field>
-    <field name="res_model">sprint.move.wizard</field>
+    <field name="res_model">project.task.move.sprint</field>
     <field name="view_mode">form</field>
     <field name="target">new</field>
     <field name="binding_model_id" ref="project.model_project_task"/>

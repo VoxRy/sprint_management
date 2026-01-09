@@ -22,6 +22,7 @@
             </group>
             <group>
               <field name="color" widget="color_picker"/>
+              <field name="display_completion_percentage" widget="progressbar"/>
             </group>
           </group>
 
@@ -58,6 +59,7 @@
         <field name="name"/>
         <field name="project_id"/>
         <field name="task_count"/>
+        <field name="display_completion_percentage" widget="progressbar"/>
         <field name="color" widget="color_picker"/>
       </tree>
     </field>
@@ -85,6 +87,7 @@
               </div>
               <div class="o_kanban_record_body">
                 <field name="project_id"/>
+                <field name="display_completion_percentage" widget="progressbar"/>
               </div>
             </div>
           </t>

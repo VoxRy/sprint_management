@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-  <record id="view_project_sprint_tree" model="ir.ui.view">
-    <field name="name">project.sprint.tree</field>
+  <record id="project_sprint_view_tree" model="ir.ui.view">
+    <field name="name">project.sprint.view.tree</field>
     <field name="model">project.sprint</field>
     <field name="arch" type="xml">
       <tree decoration-info="state == 'waiting'"
@@ -20,13 +20,13 @@
     </field>
   </record>
 
-  <record id="view_project_sprint_form" model="ir.ui.view">
-    <field name="name">project.sprint.form</field>
+  <record id="project_sprint_view_form" model="ir.ui.view">
+    <field name="name">project.sprint.view.form</field>
     <field name="model">project.sprint</field>
     <field name="arch" type="xml">
       <form string="Sprint">
         <header>
-          <button name="action_start_sprint" string="Activate Sprint" type="object" states="waiting" class="oe_highlight"/>
+          <button name="action_start_sprint" string="Start Sprint" type="object" states="waiting" class="oe_highlight"/>
           <button name="action_close_sprint" string="Close Sprint" type="object" states="active" class="oe_highlight"/>
           <field name="state" widget="statusbar" statusbar_visible="waiting,active,closed"/>
         </header>
@@ -59,6 +59,12 @@
 
           <notebook>
             <page string="Sprint Tasks" name="sprint_tasks">
+              <group>
+                <field name="add_tasks_from_backlog" 
+                       widget="many2many_tags" 
+                       placeholder="Select tasks from backlog pool..."
+                       options="{'no_create': True}"/>
+              </group>
               <field name="task_ids"
                      domain="[('project_id','=',project_id)]"
                      context="{'default_project_id': project_id, 'default_sprint_id': id}">
@@ -73,12 +79,26 @@
               </field>
             </page>
 
-            <page string="Snapshot" attrs="{'invisible':[('state','!=','closed')]}">
-              <group col="4">
-                <field name="snapshot_task_count" readonly="1"/>
-                <field name="snapshot_done_count" readonly="1"/>
-                <field name="snapshot_completion_percentage" readonly="1"/>
+            <page string="Sprint Report" attrs="{'invisible':[('state','!=','closed')]}">
+              <div class="alert alert-success mt-3" role="alert">
+                <h4 class="alert-heading"><i class="fa fa-line-chart"/> Sprint Summary</h4>
+                <p>This sprint was completed on <strong><field name="end_date" readonly="1"/></strong>.</p>
+              </div>
+              <group>
+                <group string="Metrics">
+                  <field name="snapshot_task_count" string="Final Task Count"/>
+                  <field name="snapshot_done_count" string="Final Tasks Completed"/>
+                  <field name="snapshot_completion_percentage" widget="progressbar" string="Completion Rate"/>
+                </group>
+                <group string="Sprint Outcome">
+                  <div colspan="2" class="text-muted">
+                    Total of <field name="snapshot_done_count" class="font-weight-bold"/> tasks were finished 
+                    out of <field name="snapshot_task_count" class="font-weight-bold"/>.
+                  </div>
+                </group>
               </group>
+              <separator string="Sprint Goal Achieved?"/>
+              <field name="goal" readonly="1"/>
             </page>
           </notebook>
 

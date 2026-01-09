@@ -2,9 +2,9 @@ from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
 
-class SprintMoveWizard(models.TransientModel):
-    _name = "sprint.move.wizard"
-    _description = "Move Tasks to Sprint Wizard"
+class ProjectTaskMoveSprint(models.TransientModel):
+    _name = "project.task.move.sprint"
+    _description = "Move Tasks to Sprint"
 
     task_ids = fields.Many2many("project.task", string="Tasks", required=True)
     project_id = fields.Many2one("project.project", string="Project", required=True)

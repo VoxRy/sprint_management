@@ -31,10 +31,10 @@
                   icon="fa-list-ul">
             <field name="backlog_task_count"
                    widget="statinfo"
-                   string="Backlog"/>
+                   string="Planning"/>
           </button>
 
-          <!-- Sprint Board (ACTIVE sprint only) -->
+          <!-- Sprint Board / Start Sprint -->
           <button class="oe_stat_button"
                   type="object"
                   name="action_open_active_sprint_board"
@@ -42,6 +42,27 @@
             <field name="active_sprint_id"
                    widget="statinfo"
                    string="Sprint Board"/>
+          </button>
+
+          <!-- Create Sprint (Waiting State) -->
+          <button class="oe_stat_button"
+                  type="object"
+                  name="action_create_planned_sprint"
+                  icon="fa-plus">
+            <span class="o_stat_info">
+              <span class="o_stat_text">Create Sprint</span>
+            </span>
+          </button>
+
+          <!-- Start Sprint Button (only visible when no active sprint) -->
+          <button class="oe_stat_button"
+                  type="object"
+                  name="action_start_sprint_wizard"
+                  icon="fa-play"
+                  attrs="{'invisible':[('active_sprint_id','!=',False)]}">
+            <span class="o_stat_info">
+              <span class="o_stat_text" style="color: #28a745; font-weight: bold;">Start Sprint</span>
+            </span>
           </button>
 
           <!-- Epics -->
@@ -67,6 +88,7 @@
               <field name="sequence" widget="handle"/>
               <field name="name"/>
               <field name="task_count"/>
+              <field name="display_completion_percentage" widget="progressbar"/>
               <field name="color" widget="color_picker"/>
             </tree>
           </field>

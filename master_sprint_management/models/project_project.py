@@ -1,5 +1,6 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
+from datetime import timedelta
 
 
 class ProjectProject(models.Model):
@@ -39,6 +40,7 @@ class ProjectProject(models.Model):
     backlog_task_count = fields.Integer(
         string="Backlog Tasks",
         compute="_compute_backlog_task_count",
+        store=True,
     )
 
     active_sprint_id = fields.Many2one(
@@ -59,6 +61,7 @@ class ProjectProject(models.Model):
         for project in self:
             project.epic_count = len(project.epic_ids)
 
+    @api.depends("task_ids", "task_ids.sprint_id", "use_sprint_management")
     def _compute_backlog_task_count(self):
         for project in self:
             if project.use_sprint_management:
@@ -79,7 +82,29 @@ class ProjectProject(models.Model):
             )
 
     # --------------------------------------------------
-    # AUTO CREATE SPRINT STAGES
+    # ORM OVERRIDES
+    # --------------------------------------------------
+    @api.model
+    def create(self, vals):
+        project = super().create(vals)
+
+        # If flag is TRUE during project creation
+        if project.use_sprint_management:
+            project._ensure_sprint_stages()
+
+        return project
+
+    def write(self, vals):
+        res = super().write(vals)
+
+        # If flag is set to TRUE later
+        if vals.get("use_sprint_management"):
+            self._ensure_sprint_stages()
+
+        return res
+
+    # --------------------------------------------------
+    # INTERNAL METHODS
     # --------------------------------------------------
     def _ensure_sprint_stages(self):
         """
@@ -92,7 +117,7 @@ class ProjectProject(models.Model):
             if not project.use_sprint_management:
                 continue
 
-            # Eğer projeye bağlı en az 1 stage varsa tekrar oluşturma
+            # Do not recreate if at least one stage is already linked to the project
             existing_stage = TaskType.search(
                 [("project_ids", "in", project.id)],
                 limit=1,
@@ -117,60 +142,77 @@ class ProjectProject(models.Model):
                 })
 
     # --------------------------------------------------
-    # ORM OVERRIDES
-    # --------------------------------------------------
-    @api.model
-    def create(self, vals):
-        project = super().create(vals)
-
-        # Project create edilirken flag TRUE ise
-        if project.use_sprint_management:
-            project._ensure_sprint_stages()
-
-        return project
-
-    def write(self, vals):
-        res = super().write(vals)
-
-        # Flag sonradan TRUE yapılırsa
-        if vals.get("use_sprint_management"):
-            self._ensure_sprint_stages()
-
-        return res
-
-    # --------------------------------------------------
     # ACTIONS
     # --------------------------------------------------
+    def action_start_sprint_wizard(self):
+        """Open wizard to start a new sprint"""
+        self.ensure_one()
+
+        if not self.use_sprint_management:
+            raise UserError(_("Sprint management is not enabled for this project."))
+
+        return {
+            "name": _("Start Sprint"),
+            "type": "ir.actions.act_window",
+            "res_model": "project.sprint.start.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "default_project_id": self.id,
+            },
+        }
+
+    def action_create_planned_sprint(self):
+        """Open wizard to create a 'Waiting' sprint (Jira-style)"""
+        self.ensure_one()
+        return {
+            "name": _("Create Sprint"),
+            "type": "ir.actions.act_window",
+            "res_model": "project.sprint.create.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "default_project_id": self.id,
+            },
+        }
+
     def action_open_active_sprint_board(self):
         """
         Project → Sprint Board button
-        - Active sprint yoksa hata verir
+        - Active sprint yoksa wizard açar
         - Varsa direkt sprint board açar
         """
         self.ensure_one()
 
         if not self.active_sprint_id:
-            raise UserError(
-                _("There is no active sprint in this project.\n"
-                  "Please activate a sprint first.")
-            )
+            # No active sprint, open start sprint wizard
+            return self.action_start_sprint_wizard()
 
-        return self.active_sprint_id.action_view_sprint_tasks()
+        action = self.active_sprint_id.action_view_sprint_tasks()
+        # Add buttons to action
+        action['context'].update({
+            'show_start_button': not self.active_sprint_id,
+            'show_close_button': self.active_sprint_id and self.active_sprint_id.state == 'active',
+        })
+        return action
 
     def action_view_backlog(self):
         self.ensure_one()
         return {
-            "name": _("Backlog - %s") % self.name,
+            "name": _("Planning - %s") % self.name,
             "type": "ir.actions.act_window",
             "res_model": "project.task",
             "view_mode": "tree,form",
+            "search_view_id": self.env.ref(
+                "master_sprint_management.view_task_search_form"
+            ).id,
             "domain": [
                 ("project_id", "=", self.id),
-                ("sprint_id", "=", False),
+                "|", ("sprint_id.state", "!=", "closed"), ("sprint_id", "=", False),
             ],
             "context": {
                 "default_project_id": self.id,
-                "search_default_filter_backlog": 1,
+                "group_by": "sprint_id",
             },
         }
 

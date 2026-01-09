@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+  <record id="view_project_sprint_close_wizard_form" model="ir.ui.view">
+    <field name="name">project.sprint.close.wizard.form</field>
+    <field name="model">project.sprint.close.wizard</field>
+    <field name="arch" type="xml">
+      <form string="Close Sprint">
+        <sheet>
+          <field name="project_id" invisible="1"/>
+          <!-- Simulated Ribbon Icon Area -->
+          <div class="text-center mb-3">
+             <i class="fa fa-certificate text-warning" style="font-size: 4em;"/>
+             <br/>
+             <h3 class="mt-2 text-primary">Complete <field name="sprint_id" readonly="1" nolabel="1"/></h3>
+          </div>
+
+          <div class="alert alert-info py-2" role="alert">
+            <p class="mb-1">This sprint contains:</p>
+            <ul class="mb-0">
+              <li><strong><field name="completed_task_count"/></strong> completed issues</li>
+              <li><strong><field name="incomplete_task_count"/></strong> open issue</li>
+            </ul>
+          </div>
+
+          <group attrs="{'invisible':[('incomplete_task_count','=',0)]}">
+            <field name="action_type" widget="radio"/>
+            <field name="next_sprint_id"
+                   attrs="{'invisible':[('action_type','!=','existing')],
+                           'required':[('action_type','=','existing')]}"
+                   options="{'no_create': True}"
+                   placeholder="Select existing sprint..."/>
+          </group>
+
+          <group col="4">
+             <field name="close_date" string="Finish Date"/>
+          </group>
+        </sheet>
+
+        <footer>
+          <button string="Close Sprint" name="action_close_sprint" type="object" class="btn-primary"/>
+          <button string="Cancel" class="btn-secondary" special="cancel"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+
+</odoo>
