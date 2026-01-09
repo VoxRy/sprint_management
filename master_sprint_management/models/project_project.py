@@ -202,17 +202,30 @@ class ProjectProject(models.Model):
             "name": _("Planning - %s") % self.name,
             "type": "ir.actions.act_window",
             "res_model": "project.task",
-            "view_mode": "tree,form",
+            "view_mode": "tree,form,kanban",
+            "views": [
+                (
+                    self.env.ref(
+                        "master_sprint_management.project_task_view_tree_backlog"
+                    ).id,
+                    "tree",
+                ),
+                (False, "form"),
+                (False, "kanban"),
+            ],
             "search_view_id": self.env.ref(
                 "master_sprint_management.view_task_search_form"
             ).id,
             "domain": [
                 ("project_id", "=", self.id),
-                "|", ("sprint_id.state", "!=", "closed"), ("sprint_id", "=", False),
+                "|",
+                ("sprint_id.state", "!=", "closed"),
+                ("sprint_id", "=", False),
             ],
             "context": {
                 "default_project_id": self.id,
                 "group_by": "sprint_id",
+                "create": True,
             },
         }
 

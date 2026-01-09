@@ -281,6 +281,7 @@ class ProjectSprint(models.Model):
                 "active_sprint_id": self.id,
                 "active_sprint_state": self.state,
                 "sprint_board_project_id": self.project_id.id,
+                "create": True,
             },
         }
 
