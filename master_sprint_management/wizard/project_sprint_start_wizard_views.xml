@@ -28,6 +28,18 @@
             <field name="goal" nolabel="1" placeholder="What do we want to achieve in this sprint?"/>
           </group>
 
+          <notebook>
+            <page string="Tasks" name="tasks">
+                <field name="task_ids" domain="[('project_id', '=', project_id), ('sprint_id', '=', False)]">
+                    <tree>
+                        <field name="name"/>
+                        <field name="user_ids" widget="many2many_avatar_user"/>
+                        <field name="stage_id"/>
+                    </tree>
+                </field>
+            </page>
+          </notebook>
+
         <footer>
           <button string="Start Sprint" name="action_start_sprint" type="object" class="btn-primary"/>
           <button string="Cancel" class="btn-secondary" special="cancel"/>

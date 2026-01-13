@@ -47,6 +47,7 @@ class ProjectSprintStartWizard(models.TransientModel):
         readonly=False,
     )
     goal = fields.Text(string="Sprint Goal")
+    task_ids = fields.Many2many("project.task", string="Tasks")
     task_count = fields.Integer(string="Task Count", compute="_compute_task_count")
 
     @api.depends("start_date", "duration")
@@ -58,12 +59,10 @@ class ProjectSprintStartWizard(models.TransientModel):
             elif not wizard.end_date:
                 wizard.end_date = wizard.start_date
 
+    @api.depends("task_ids")
     def _compute_task_count(self):
         for wizard in self:
-            wizard.task_count = self.env["project.task"].search_count([
-                ("project_id", "=", wizard.project_id.id),
-                ("sprint_id", "=", False),
-            ])
+            wizard.task_count = len(wizard.task_ids)
 
     @api.model
     def default_get(self, fields_list):
@@ -79,6 +78,13 @@ class ProjectSprintStartWizard(models.TransientModel):
                 res["name"] = self.env["project.sprint"].browse(res["sprint_id"]).name
             else:
                 res["name"] = self._generate_sprint_name(res.get("start_date") or fields.Datetime.now())
+        if "task_ids" in fields_list:
+            if self.env.context.get("active_model") == "project.task" and self.env.context.get("active_ids"):
+                res["task_ids"] = [(6, 0, self.env.context["active_ids"])]
+            elif res.get("sprint_id"):
+                # If starting an existing sprint, show its currents tasks
+                sprint = self.env["project.sprint"].browse(res["sprint_id"])
+                res["task_ids"] = [(6, 0, sprint.task_ids.ids)]
         return res
 
     def _generate_sprint_name(self, start_date):
@@ -149,16 +155,12 @@ class ProjectSprintStartWizard(models.TransientModel):
 
         sprint_name = sprint.name
 
-        # Move all tasks currently in "Backlog" (no sprint) to this new sprint
-        backlog_tasks = self.env["project.task"].search([
-            ("project_id", "=", self.project_id.id),
-            ("sprint_id", "=", False),
-        ])
-        if backlog_tasks:
-            backlog_tasks.write({"sprint_id": sprint.id})
+        # Move selected tasks to the new sprint
+        if self.task_ids:
+            self.task_ids.write({"sprint_id": sprint.id})
 
         sprint.message_post(
-            body=_("<p>Sprint <strong>%s</strong> has been started with %d tasks.</p>") % (sprint.name, len(backlog_tasks))
+            body=_("<p>Sprint <strong>%s</strong> has been started with %d tasks.</p>") % (sprint.name, len(self.task_ids))
         )
 
         return {
